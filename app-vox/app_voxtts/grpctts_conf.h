@@ -28,7 +28,8 @@ struct grpctts_job_conf {
 
 struct grpctts_conf {
 	char *endpoint;
-	struct grpctts_job_conf job_conf;
+    char *token;
+    struct grpctts_job_conf job_conf;
 };
 
 #define GRPCTTS_JOB_CONF_INITIALIZER {				\
@@ -39,6 +40,7 @@ struct grpctts_conf {
 
 #define GRPCTTS_CONF_INITIALIZER {			\
 	.endpoint = NULL,				\
+	.token = NULL,				\
 	.job_conf = GRPCTTS_JOB_CONF_INITIALIZER,	\
 }
 

@@ -10,8 +10,8 @@
 
 namespace GRPCTTS {
 
-Channel::Channel(const char *endpoint)
-	: channel_backend (std::make_shared<ChannelBackend> (endpoint))
+Channel::Channel(const char *endpoint, const char * token)
+	: channel_backend (std::make_shared<ChannelBackend> (endpoint, token))
 {
 }
 Channel::~Channel()

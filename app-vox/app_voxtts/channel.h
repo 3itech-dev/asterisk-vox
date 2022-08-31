@@ -24,7 +24,7 @@ class ChannelBackend;
 class Channel
 {
 public:
-	Channel(const char *endpoint);
+	Channel(const char *endpoint, const char * token);
 	~Channel();
 	Job *StartJob(double speed, double tone, const std::string &model,
 		      const struct grpctts_job_input &job_input);

@@ -26,7 +26,7 @@ extern void grpctts_init(void);
 
 extern void grpctts_shutdown(void);
 
-extern struct grpctts_channel *grpctts_channel_create(const char *endpoint);
+extern struct grpctts_channel *grpctts_channel_create(const char *endpoint, const char *token);
 
 extern void grpctts_channel_destroy(struct grpctts_channel *channel);
 

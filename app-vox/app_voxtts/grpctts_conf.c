@@ -145,13 +145,16 @@ struct grpctts_job_conf *grpctts_job_conf_cpy(struct grpctts_job_conf *dest, con
 
 void grpctts_conf_init(struct grpctts_conf *conf)
 {
-	conf->endpoint = NULL;
+    conf->endpoint = NULL;
+    conf->token = NULL;
 	grpctts_job_conf_init(&conf->job_conf);
 }
 void grpctts_conf_clear(struct grpctts_conf *conf)
 {
-	ast_free(conf->endpoint);
-	conf->endpoint = NULL;
+    ast_free(conf->endpoint);
+    ast_free(conf->token);
+    conf->endpoint = NULL;
+    conf->token = NULL;
 	grpctts_job_conf_clear(&conf->job_conf);
 }
 int grpctts_conf_load(struct grpctts_conf *conf, ast_mutex_t *mutex, const char *fname, int reload)
@@ -183,9 +186,12 @@ int grpctts_conf_load(struct grpctts_conf *conf, ast_mutex_t *mutex, const char 
 		if (!strcasecmp(cat, "general") ) {
 			struct ast_variable *var = ast_variable_browse(cfg, cat);
 			while (var) {
-				if (!strcasecmp(var->name, "endpoint")) {
-					ast_free(conf->endpoint);
-					conf->endpoint = ast_strdup(var->value);
+                if (!strcasecmp(var->name, "endpoint")) {
+                    ast_free(conf->endpoint);
+                    conf->endpoint = ast_strdup(var->value);
+                } else if (!strcasecmp(var->name, "token")) {
+                        ast_free(conf->token);
+                        conf->token = ast_strdup(var->value);
 				} else if (!strcasecmp(var->name, "speed")) {
 					char *eptr;
 					double value = strtod(var->value, &eptr);
@@ -236,7 +242,8 @@ int grpctts_conf_load(struct grpctts_conf *conf, ast_mutex_t *mutex, const char 
 }
 struct grpctts_conf *grpctts_conf_cpy(struct grpctts_conf *dest, const struct grpctts_conf *src, ast_mutex_t *src_mutex)
 {
-	ast_free(dest->endpoint);
+    ast_free(dest->endpoint);
+    ast_free(dest->token);
 	ast_free(dest->job_conf.model);
 
 	if (src_mutex)
@@ -248,7 +255,8 @@ struct grpctts_conf *grpctts_conf_cpy(struct grpctts_conf *dest, const struct gr
 		grpctts_conf_init(dest);
 		return NULL;
 	}
-	dest->endpoint = ast_strdup(src->endpoint);
+    dest->endpoint = ast_strdup(src->endpoint);
+    dest->token = ast_strdup(src->token);
 
 	if (src_mutex)
 		ast_mutex_unlock(src_mutex);

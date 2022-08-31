@@ -36,12 +36,8 @@ extern struct ast_module *AST_MODULE_SELF_SYM(void);
 			<parameter name="endpoint" required="true">
 				<para>Specifies service endpoint with HOST:PORT format</para>
 			</parameter>
-			<parameter name="options">
-				<optionlist>
-					<option name="A">
-						<para>Encode UTF-8 characters as ASCII escape sequence at generated JSON events</para>
-					</option>
-				</optionlist>
+			<parameter name="token" required="true">
+				<para>Specifies service token with HOST:PORT format</para>
 			</parameter>
 			<parameter name="model">
 				<para>Specifies model for ASR session</para>
@@ -105,6 +101,7 @@ struct thread_conf {
 
     struct ast_channel *chan;
     char *endpoint;
+    char *token;
     char *model;
 };
 
@@ -115,7 +112,8 @@ static struct thread_conf dflt_thread_conf = {
 #endif
         .chan = NULL,
         .endpoint = NULL,
-        .model = NULL,
+        .token = NULL,
+        .model = NULL
 };
 
 
@@ -127,7 +125,9 @@ static void *thread_start(struct thread_conf *conf)
 #ifndef USE_EVENTFD
     , conf->terminate_event_fd_out
 #endif
-    , conf->endpoint, chan,conf->model);
+    , conf->endpoint
+            , conf->token
+                 , chan,conf->model);
 
     close(conf->terminate_event_fd);
 #ifndef USE_EVENTFD
@@ -142,9 +142,11 @@ static void *thread_start(struct thread_conf *conf)
 static void clear_config(void)
 {
     ast_free(dflt_thread_conf.endpoint);
+    ast_free(dflt_thread_conf.token);
     ast_free(dflt_thread_conf.model);
     dflt_thread_conf.chan = NULL;
     dflt_thread_conf.endpoint = NULL;
+    dflt_thread_conf.token = NULL;
     dflt_thread_conf.model = NULL;
 }
 
@@ -177,6 +179,8 @@ static int load_config(int reload)
             while (var) {
                 if (!strcasecmp(var->name, "endpoint")) {
                     dflt_thread_conf.endpoint = ast_strdup(var->value);
+                } else if (!strcasecmp(var->name, "token")) {
+                    dflt_thread_conf.token = ast_strdup(var->value);
                 } else if (!strcasecmp(var->name, "model")) {
                     dflt_thread_conf.model = ast_strdup(var->value);
                 } else {
@@ -201,8 +205,9 @@ static int load_config(int reload)
 static struct thread_conf *make_thread_conf(const struct thread_conf *source)
 {
     size_t endpoint_len = strlen(source->endpoint) + 1;
+    size_t token_len = source->token ? (strlen(source->token) + 1) : 0;
     size_t model_len = source->model ? (strlen(source->model) + 1) : 0;
-    struct thread_conf *conf = ast_malloc(sizeof(struct thread_conf) + endpoint_len + model_len);
+    struct thread_conf *conf = ast_malloc(sizeof(struct thread_conf) + endpoint_len + token_len + model_len);
     if (!conf)
         return NULL;
     void *p = conf + 1;
@@ -214,11 +219,13 @@ static struct thread_conf *make_thread_conf(const struct thread_conf *source)
     conf->chan = source->chan;
 
     conf->endpoint = strcpy(p, source->endpoint);
+
     p += endpoint_len;
+    conf->token = source->token ? strcpy(p, source->token) : NULL;
+    p += token_len;
     conf->model = source->model ? strcpy(p, source->model) : NULL;
     return conf;
 }
-
 
 struct grpcsttbackground_control {
     int terminate_event_fd;
@@ -374,6 +381,7 @@ static int grpcsttbackground_exec(struct ast_channel *chan, const char *data)
     char *parse = ast_strdupa(data);
     AST_DECLARE_APP_ARGS(args,
                          AST_APP_ARG(endpoint);
+    AST_APP_ARG(token);
     AST_APP_ARG(model);
     );
 
@@ -382,11 +390,15 @@ static int grpcsttbackground_exec(struct ast_channel *chan, const char *data)
     if (args.endpoint && *args.endpoint)
         thread_conf.endpoint = args.endpoint;
 
+    if (args.token && *args.token)
+        thread_conf.token = args.token;
+
     if (!thread_conf.endpoint) {
         ast_log(LOG_ERROR, "%s: Failed to execute application: no endpoint specified\n", app);
         ast_mutex_unlock(&dflt_thread_conf_mutex);
         return -1;
     }
+
     if (args.model && *args.model) {
         thread_conf.model = args.model;
     }

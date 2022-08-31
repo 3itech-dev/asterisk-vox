@@ -6,7 +6,7 @@ PROTO_BUILT_SOURCES = asr_api.pb.cc asr_api.pb.h \
                       	asr_api.grpc.pb.cc asr_api.grpc.pb.h
 
 
-BUILT_SOURCES = ../thirdparty/inst/include/grpc/grpc.h ../thirdparty/inst/lib/libjansson.a $(PROTO_BUILT_SOURCES)
+BUILT_SOURCES = ../thirdparty/inst/include/grpc/grpc.h ../thirdparty/inst/lib/libjansson.a roots.pem.h $(PROTO_BUILT_SOURCES)
 
 app_voxasr_la_SOURCES = app_voxasr.c \
                          grpc_stt.cpp \
@@ -35,8 +35,7 @@ app_voxasr_la_LIBTOOLFLAGS = --tag=disable-static
 app_voxasr_la_LIBADD  = $(VOX_LIBS)
 
 
-
-CLEANFILES=$(PROTO_BUILT_SOURCES)
+CLEANFILES=$(PROTO_BUILT_SOURCES) roots.pem.h
 
 asr_api.pb.cc asr_api.pb.h: asr_api.proto
 	../thirdparty/inst/bin/protoc -I . -I ../thirdparty/googleapis -I ../thirdparty/inst/include --cpp_out=. asr_api.proto
@@ -50,6 +49,10 @@ asr_api.grpc.pb.cc asr_api.grpc.pb.h: asr_api.proto
 ../thirdparty/inst/lib/libjansson.a:
 	make -C ../thirdparty inst/lib/libjansson.a
 
+roots.pem.h: ../thirdparty/grpc/etc/roots.pem
+	echo "static unsigned char grpc_roots_pem[] = {" > roots.pem.h.tmp
+	xxd -i ../thirdparty/grpc/etc/roots.pem | tail -n +2 | head -n -1 >> roots.pem.h.tmp
+	mv roots.pem.h.tmp roots.pem.h
 
 XMLDOC_FILES = app_voxasr.c
 

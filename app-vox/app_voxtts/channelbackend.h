@@ -4,7 +4,7 @@
 
 #include <memory>
 #include <thread>
-
+#include <string>
 
 typedef void (*grpctts_stream_error_callback_t)(const char *message);
 
@@ -24,14 +24,16 @@ public:
 	static void SetErrorCallback(grpctts_stream_error_callback_t callback);
 
 public:
-	ChannelBackend(const char *endpoint);
+	ChannelBackend(const char *endpoint, const char * token);
 	~ChannelBackend();
 	void SetChannel(std::shared_ptr<grpc::Channel> grpc_channel);
 	std::shared_ptr<grpc::Channel> GetChannel(); // To be called after polling on channel_completion_fd shows some data
 	int ChannelCompletionFD() const;
+    std::string BuildAuthToken() const;
 
 private:
 	std::shared_ptr<grpc::Channel> grpc_channel;
+    const std::string token;
 #ifdef USE_EVENTFD
     int channel_completion_fd;
 #else

@@ -29,9 +29,9 @@ extern "C" void grpctts_shutdown()
 	grpc_shutdown();
 }
 
-extern "C" struct grpctts_channel *grpctts_channel_create(const char *endpoint)
+extern "C" struct grpctts_channel *grpctts_channel_create(const char *endpoint, const char *token)
 {
-	GRPCTTS::Channel *channel = new GRPCTTS::Channel(endpoint);
+	GRPCTTS::Channel *channel = new GRPCTTS::Channel(endpoint, token);
 	return (struct grpctts_channel *) channel;
 }
 extern "C" void grpctts_channel_destroy(struct grpctts_channel *channel)

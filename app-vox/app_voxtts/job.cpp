@@ -45,18 +45,22 @@ static void thread_routine(std::shared_ptr<ChannelBackend> channel_backend,
 	poll(&pfd, 1, CHANNEL_AWAIT_TIMEOUT);
 	if (!(pfd.revents & POLLIN)) {
 		if (grpctts_stream_error_callback)
-			grpctts_stream_error_callback("GRPC TTS stream finished with error: failed to initialize channel");
+			grpctts_stream_error_callback("Vox TTS stream finished with error: failed to initialize channel");
 		return;
 	}
 
 	std::shared_ptr<grpc::Channel> grpc_channel = channel_backend->GetChannel();
 	if (!grpc_channel) {
 		if (grpctts_stream_error_callback)
-			grpctts_stream_error_callback("GRPC TTS stream finished with error: failed to initialize channel");
+			grpctts_stream_error_callback("Vox TTS stream finished with error: failed to initialize channel");
 		return;
 	}
 
 	grpc::ClientContext context;
+
+    std::string auth_token(channel_backend->BuildAuthToken());
+    if (auth_token.length())
+        context.AddMetadata("authorization", auth_token);
 	std::unique_ptr<vox::tts::TTS::Stub> tts_stub = vox::tts::TTS::NewStub(grpc_channel);
     vox::tts::SynthesizeRequest request;
     request.set_text(text);
@@ -97,8 +101,9 @@ static void thread_routine(std::shared_ptr<ChannelBackend> channel_backend,
         byte_queue->Terminate(true);
 #endif
     } else {
-        printf("synthesize4\n");
-
+        char message[4096];
+        snprintf(message, sizeof(message), "Vox TTS synthesize: %s\n", status.error_message().c_str());
+        grpctts_stream_error_callback(message);
         byte_queue->Terminate(true);
     }
 }

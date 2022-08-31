@@ -42,6 +42,9 @@ extern struct ast_module *AST_MODULE_SELF_SYM(void);
 			<parameter name="endpoint" required="false">
 				<para>Specifies endpointg for GRPC TTS service (must be specified here or at configuration file)</para>
 			</parameter>
+						<parameter name="token" required="false">
+				<para>Specifies token for GRPC TTS service (must be specified here or at configuration file)</para>
+			</parameter>
 		</syntax>
 		<description>
 			<para>This application is necessary to allow &quot;VoxPlayBackgroundInit&quot; application call for speech synthesis using &quot;say,[OPTIONS],JSON_TASK&quot; command.</para>
@@ -89,6 +92,9 @@ static const char app_initgrpctts[] = "VoxPlayBackgroundInit";
 static const char app[] = "VoxPlayBackground";
 
 #define AUDIO_LAYER_COUNT 1
+
+
+
 
 struct playback_control_message {
     char *command;
@@ -323,6 +329,7 @@ static int playbackgroundinitgrpctts_exec(struct ast_channel *chan, const char *
     AST_DECLARE_APP_ARGS(args,
                          AST_APP_ARG(conf_fname);
     AST_APP_ARG(endpoint);
+    AST_APP_ARG(token);
     );
 
     AST_STANDARD_APP_ARGS(args, parse);
@@ -336,16 +343,19 @@ static int playbackgroundinitgrpctts_exec(struct ast_channel *chan, const char *
         ast_free(control->conf.endpoint);
         control->conf.endpoint = ast_strdup(args.endpoint);
     }
+    if (args.token && *args.token) {
+        ast_free(control->conf.token);
+        control->conf.token = ast_strdup(args.token);
+    }
 
     if (!control->conf.endpoint) {
         ast_log(LOG_ERROR, "PlayBackgroundInitGRPCTTS: Failed to execute application: no endpoint specified\n");
         return -1;
     }
 
-
     ast_mutex_lock(&control->mutex);
     if (!control->tts_channel)
-        control->tts_channel = grpctts_channel_create(control->conf.endpoint);
+        control->tts_channel = grpctts_channel_create(control->conf.endpoint, control->conf.token);
     ast_mutex_unlock(&control->mutex);
 
     return 0;

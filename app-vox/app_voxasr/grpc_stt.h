@@ -19,7 +19,8 @@ extern void grpc_stt_run(
 #ifndef USE_EVENTFD
     int terminate_event_fd_out,
 #endif
-    const char *target,
+    const char *endpoint,
+    const char *token,
 	struct ast_channel *chan,
 	const char *model);
 

@@ -1,0 +1,95 @@
+// Basic STT example.
+// Recognize during a minute logging recognition events with level NOTICE.
+
+context incoming {
+    _2XX => {
+	Answer();
+	WaitEventInit(); // Initialize event queue
+        VoxPlayBackgroundInit();
+	VoxASRBackground(); // Initialize background recognition
+       LOG(NOTICE,Hello);
+
+	Set(CALL_END_TIME=$[${GET_TIME_NSEC(MONOTONIC)} + 600]); // Set end time to a minute after now
+	Set(SLEEP_TIME=$[${CALL_END_TIME} - ${GET_TIME_NSEC(MONOTONIC)}]); // Calculate maximum wait time
+	while (${SLEEP_TIME} > 0) { // While not timed out yet
+	    WaitEvent(${SLEEP_TIME}); // Wait until next event or timeout
+               Log(NOTICE,EVENT [${WAITEVENTNAME}]);
+	    if (${WAITEVENTSTATUS} == SUCCESS) {
+		Set(CurrentUTCTime=${GET_TIME_NSEC(UTC)});
+		Set(CurrentUTCTimeString=${STRFTIME(${CurrentUTCTime},GMT,%FT%T)}.${CurrentUTCTime:-9:});
+		switch (${WAITEVENTNAME}) {
+		case GRPCSTT2_UTF8:
+                 VoxPlayBackground(&say,,{"text":"${WAITEVENTBODY}"});
+		    Log(NOTICE,[${CurrentUTCTimeString}] Phrase(UTF-8 encoded) = ${WAITEVENTBODY});
+		    break;
+		default:
+		}
+	    } else {
+		Log(NOTICE,WaitEvent() WAITEVENTSTATUS == ${WAITEVENTSTATUS}; ${WAITEVENTBODY});
+	    }
+	    Set(SLEEP_TIME=$[${CALL_END_TIME} - ${GET_TIME_NSEC(MONOTONIC)}]); // Update maximum wait time
+	}
+LOG(NOTICE,Bye);
+	Hangup();
+LOG(NOTICE,Finished);
+    }
+
+_1XX => {
+	Answer();
+	WaitEventInit(); // Initialize event queue
+	VoxPlayBackgroundInit(); // Initialize synthesis
+	VoxPlayBackground(&say,,{"text":"Здравствуйте. Чем я могу вам помочь"});
+
+	Set(CALL_END_TIME=$[${GET_TIME_NSEC(MONOTONIC)} + 60]); // Set end time to a minute after now
+	Set(SLEEP_TIME=$[${CALL_END_TIME} - ${GET_TIME_NSEC(MONOTONIC)}]); // Calculate maximum wait time
+        Set(COUNT=3);
+	while (${SLEEP_TIME} > 0) { // While not timed out yet
+	    WaitEvent(${SLEEP_TIME}); // Wait until next event or timeout
+	    if (${WAITEVENTSTATUS} == SUCCESS) {
+		switch (${WAITEVENTNAME}) {
+		case VoxPlayBackgroundFinished:
+		    Log(NOTICE,Finished layer #${WAITEVENTBODY});
+                    Set(COUNT=$[${COUNT}-1]);
+		    break;
+		case VoxPlayBackgroundError:
+		    Set(ARRAY(LAYER,ERROR_MESSAGE)=${WAITEVENTBODY});
+		    Log(NOTICE,Error at layer #${LAYER}: ${ERROR_MESSAGE});
+                    Set(COUNT=$[${COUNT}-1]);
+		    break;
+		default:
+		}
+	    }
+ if (${COUNT}==0) { Set(CALL_END_TIME=0);}
+	    Set(SLEEP_TIME=$[${CALL_END_TIME} - ${GET_TIME_NSEC(MONOTONIC)}]); // Update maximum wait time
+	}
+	
+	VoxPlayBackground(&say,,{"text":"До свидания"});
+	Set(CALL_END_TIME=$[${GET_TIME_NSEC(MONOTONIC)} + 60]); // Set end time to a minute after now
+	Set(SLEEP_TIME=$[${CALL_END_TIME} - ${GET_TIME_NSEC(MONOTONIC)}]); // Calculate maximum wait time
+       Set(COUNT=2);
+	while (${SLEEP_TIME} > 0) { // While not timed out yet
+	    WaitEvent(${SLEEP_TIME}); // Wait until next event or timeout
+	    if (${WAITEVENTSTATUS} == SUCCESS) {
+		switch (${WAITEVENTNAME}) {
+		case VoxPlayBackgroundFinished:
+		    Log(NOTICE,Finished layer #${WAITEVENTBODY});
+		    Set(COUNT=$[${COUNT}-1]);
+		    break;
+		case VoxPlayBackgroundError:
+		    Set(ARRAY(LAYER,ERROR_MESSAGE)=${WAITEVENTBODY});
+		    Set(COUNT=$[${COUNT}-1]);
+		    Log(NOTICE,Error at layer #${LAYER}: ${ERROR_MESSAGE});
+		    break;
+		default:
+		}
+	    }
+ if (${COUNT}==0) { Set(CALL_END_TIME=0);}
+
+	    Set(SLEEP_TIME=$[${CALL_END_TIME} - ${GET_TIME_NSEC(MONOTONIC)}]); // Update maximum wait time
+	}
+
+	Wait(0.2);
+
+	Hangup();
+    }
+};

@@ -13,6 +13,7 @@
 #include "channelbackend.h"
 
 #include "job.h"
+#include "roots.pem.h"
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -31,8 +32,9 @@
 #include <grpcpp/security/credentials.h>
 #include <atomic>
 
-
 static grpctts_stream_error_callback_t grpctts_stream_error_callback = NULL;
+
+static const std::string grpc_roots_pem_string ((const char *) grpc_roots_pem, sizeof(grpc_roots_pem));
 
 
 static int *fd_rc_copy(int *p)
@@ -75,9 +77,12 @@ static int *fd_rc_new(int fd)
 	return fd_rc;
 }
 
-static void thread_routine(int channel_completion_fd, const std::string &endpoint, GRPCTTS::ChannelBackend *channel_backend)
+static void thread_routine(int channel_completion_fd, const std::string &endpoint, const std::string &token, GRPCTTS::ChannelBackend *channel_backend)
 {
-	std::shared_ptr<grpc::Channel> grpc_channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
+    grpc::SslCredentialsOptions ssl_credentials_options = {
+            .pem_root_certs = grpc_roots_pem_string,
+    };
+	std::shared_ptr<grpc::Channel> grpc_channel = grpc::CreateChannel(endpoint, token.empty()?grpc::InsecureChannelCredentials():grpc::SslCredentials(ssl_credentials_options));
 	channel_backend->SetChannel(grpc_channel );
 #ifdef USE_EVENTFD
     eventfd_write(channel_completion_fd, 1);
@@ -96,16 +101,16 @@ void ChannelBackend::SetErrorCallback(grpctts_stream_error_callback_t callback)
 }
 
 #define NON_NULL_STRING(str) ((str) ? (str) : "")
-ChannelBackend::ChannelBackend(const char *endpoint)
+ChannelBackend::ChannelBackend(const char *endpoint, const char * token) : token(NON_NULL_STRING(token))
 #ifdef USE_EVENTFD
-    :  channel_completion_fd(eventfd(0, EFD_NONBLOCK))
+    , channel_completion_fd(eventfd(0, EFD_NONBLOCK))
     {
     	thread = std::thread(thread_routine, channel_completion_fd, std::string(endpoint), this);
 }
 #else
     {
         pipe(channel_completion_fd);
-        thread = std::thread(thread_routine, channel_completion_fd[1], std::string(endpoint), this);
+        thread = std::thread(thread_routine, channel_completion_fd[1], std::string(endpoint), this->token, this);
     }
 #endif
 
@@ -138,6 +143,14 @@ int ChannelBackend::ChannelCompletionFD() const
 #else
     return channel_completion_fd[0];
 #endif
+}
+
+std::string ChannelBackend::BuildAuthToken() const {
+    if (token.empty())
+        return "";
+    std::string jwt = "Bearer " + token;
+
+    return jwt;
 }
 
 

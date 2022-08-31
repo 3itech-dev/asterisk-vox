@@ -4,7 +4,7 @@ extern "C" struct ast_module *AST_MODULE_SELF_SYM(void);
 #define typeof __typeof__
 #include "asr_api.grpc.pb.h"
 #include "grpc_stt.h"
-
+#include "roots.pem.h"
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -49,7 +49,7 @@ extern "C" {
 #define MAX_FRAME_SAMPLES 800
 #define ALIGNMENT_SAMPLES 80
 
-
+static const std::string grpc_roots_pem_string ((const char *) grpc_roots_pem, sizeof(grpc_roots_pem));
 
 static inline int delta_samples(const struct timespec *a, const struct timespec *b)
 {
@@ -214,7 +214,7 @@ public:
 #ifndef USE_EVENTFD
             int terminate_event_fd_out,
 #endif
-            std::shared_ptr<grpc::Channel> grpc_channel, struct ast_channel *chan, const char *model);
+            std::shared_ptr<grpc::Channel> grpc_channel, const char* token,  struct ast_channel *chan, const char *model);
 	~GRPCSTT();
 	void ReapAudioFrame(struct ast_frame *frame);
 	void Terminate() noexcept;
@@ -222,6 +222,7 @@ public:
 
 private:
 	std::unique_ptr<vox::asr::SttService::Stub> stt_stub;
+    std::string token;
 	struct ast_channel *chan;
 	std::string model;
 
@@ -280,13 +281,19 @@ void GRPCSTT::DetachFromChannel(std::shared_ptr<GRPCSTT> &grpc_stt) noexcept
 	ast_channel_unlock(grpc_stt->chan);
 	grpc_stt->framehook_id = -1;
 }
+
+#define NON_NULL_STRING(str) ((str) ? (str) : "")
+
+
 GRPCSTT::GRPCSTT(int terminate_event_fd,
 #ifndef USE_EVENTFD
         int terminate_event_fd_out,
 #endif
                  std::shared_ptr<grpc::Channel> grpc_channel,
+         const char * token,
 		 struct ast_channel *chan, const char *model)
 	:     stt_stub(vox::asr::SttService::NewStub(grpc_channel)),
+    token(NON_NULL_STRING(token)),
           chan(chan), model(model),
     terminate_event_fd(terminate_event_fd),
 #ifndef USE_EVENTFD
@@ -355,6 +362,10 @@ bool GRPCSTT::Run(int &error_status, std::string &error_message)
 	error_message = "";
 
 	grpc::ClientContext context;
+    if (!token.empty()) {
+        std::string jwt = "Bearer " + token;
+        context.AddMetadata("authorization", jwt);
+    }
 	std::shared_ptr<grpc::ClientReaderWriter<vox::asr::StreamingRecognitionRequest,
             vox::asr::StreamingRecognitionResponse >> stream(stt_stub->StreamingRecognize(&context));
 
@@ -510,26 +521,30 @@ bool GRPCSTT::Run(int &error_status, std::string &error_message)
     return true;
 }
 
-
 extern "C" void grpc_stt_run(
         int terminate_event_fd,
 #ifndef USE_EVENTFD
        int terminate_event_fd_out,
 #endif
         const char *endpoint,
+        const char *token,
 			     struct ast_channel *chan, const char *model)
 {
 	bool success = false;
 	int error_status;
 	std::string error_message;
 	try {
-#define NON_NULL_STRING(str) ((str) ? (str) : "")
+        grpc::SslCredentialsOptions ssl_credentials_options = {
+                .pem_root_certs = grpc_roots_pem_string,
+        };
+
 		std::shared_ptr<GRPCSTT> grpc_stt = std::make_shared<GRPCSTT>(
 			terminate_event_fd,
 #ifndef USE_EVENTFD
             terminate_event_fd_out,
 #endif
-                grpc::CreateChannel(endpoint,  grpc::InsecureChannelCredentials()),
+                grpc::CreateChannel(endpoint,  token? grpc::SslCredentials(ssl_credentials_options):grpc::InsecureChannelCredentials()),
+            token,
 			chan, model
 		);
 #undef NON_NULL_STRING
