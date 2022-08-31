@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package vox.tts;
+
+message SynthesizeRequest {
+  string model = 1;
+  string text = 2;
+  float speed = 3;
+  float tone = 4;
+  int32 sample_rate = 5;
+}
+
+message SynthesizeResponse {
+  bytes audio_content = 1;
+}
+
+service TTS {
+    rpc synthesize(SynthesizeRequest) returns (SynthesizeResponse);
+}

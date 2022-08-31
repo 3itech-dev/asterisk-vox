@@ -1,0 +1,19 @@
+Instructions
+============
+
+Install dependencies into system:
+
+```
+pkg install devel/autotools
+```
+
+
+Call bootstrap for whole repository:
+
+```
+cd app_vox
+./bootstrap
+```
+
+
+Now to build each module see INSTALL files at corresponding directory.

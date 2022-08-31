@@ -1,0 +1,7 @@
+#!/bin/sh -e
+autoreconf --install
+libtoolize
+aclocal
+autoheader
+automake
+autoconf
