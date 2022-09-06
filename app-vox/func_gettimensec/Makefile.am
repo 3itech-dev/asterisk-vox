@@ -1,5 +1,7 @@
 pkgdir = $(asteriskmoduledir)
 pkg_LTLIBRARIES = func_gettimensec.la
+CXX=clang
+
 func_gettimensec_la_SOURCES = \
 func_gettimensec.c
 

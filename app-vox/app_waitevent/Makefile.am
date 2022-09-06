@@ -1,5 +1,7 @@
 pkgdir = $(asteriskmoduledir)
 pkg_LTLIBRARIES = app_waitevent.la
+CXX=clang
+
 app_waitevent_la_SOURCES = \
 app_waitevent.c
 

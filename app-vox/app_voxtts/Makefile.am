@@ -1,9 +1,11 @@
 pkgdir = $(asteriskmoduledir)
 pkg_LTLIBRARIES = app_voxtts.la
+CXX=clang
+
 PROTO_BUILT_SOURCES = \
 	tts_api.pb.cc tts_api.pb.h \
 	tts_api.grpc.pb.cc tts_api.grpc.pb.h
-BUILT_SOURCES = ../thirdparty/inst/include/grpc/grpc.h   roots.pem.h $(PROTO_BUILT_SOURCES)
+BUILT_SOURCES = ../thirdparty/inst/include/grpc/grpc.h $(PROTO_BUILT_SOURCES)
 
 app_voxtts_la_SOURCES = \
 	app_voxtts.c \
@@ -34,7 +36,7 @@ app_voxtts_la_LDFLAGS = -Wl,-E -pthread -g -module -avoid-version -Wl,-fuse-ld=g
 	../thirdparty/inst/lib/libgrpc++_unsecure.a
 app_playbackground_la_LIBTOOLFLAGS = --tag=disable-static
 
-CLEANFILES=$(PROTO_BUILT_SOURCES) roots.pem.h
+CLEANFILES=$(PROTO_BUILT_SOURCES)
 
 
 tts_api.pb.cc tts_api.pb.h: tts_api.proto
