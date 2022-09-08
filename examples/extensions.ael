@@ -18,7 +18,7 @@ context incoming {
 		Set(CurrentUTCTime=${GET_TIME_NSEC(UTC)});
 		Set(CurrentUTCTimeString=${STRFTIME(${CurrentUTCTime},GMT,%FT%T)}.${CurrentUTCTime:-9:});
 		switch (${WAITEVENTNAME}) {
-		case GRPCSTT2_UTF8:
+		case VOX_ASR_TEXT:
                  VoxPlayBackground(&say,,{"text":"${WAITEVENTBODY}"});
 		    Log(NOTICE,[${CurrentUTCTimeString}] Phrase(UTF-8 encoded) = ${WAITEVENTBODY});
 		    break;
